@@ -16,3 +16,6 @@ git clone https://github.com/ushu3323/markdown-lite-xl.git
 ```
 
 Done! now press `Ctrl+shift+m` to open the preview
+
+# Plugin in action!
+![screenshot of the plugin](/assets/screenshot.png)
