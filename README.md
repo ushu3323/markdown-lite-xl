@@ -12,7 +12,7 @@ cd /home/{username}/.config/lite-xl/plugins
 
 Clone this repository
 ```bash
-git clone https://github.com/ushu3323/markdown-lite-xl.git
+git clone https://github.com/ushu3323/markdown-lite-xl.git markdown-xl
 ```
 
 Done! now press `Ctrl+shift+m` to open the preview
