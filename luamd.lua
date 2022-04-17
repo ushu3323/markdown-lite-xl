@@ -524,6 +524,7 @@ return setmetatable({
   renderString = renderString,
   renderLineIterator = renderLineIterator,
   renderTable = renderTable,
+  read = read
 }, {
   __call = function(self, ...) -- luacheck: no unused args
     return render(...)
