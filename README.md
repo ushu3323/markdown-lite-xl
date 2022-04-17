@@ -1,5 +1,5 @@
 # markdown-lite-xl
-Lite-xl plugin, shows a preview of the active markdown file
+[Lite XL text editor](https://github.com/lite-xl/lite-xl) plugin, shows a preview of the active markdown file
 <br><br>
 
 # Installation
