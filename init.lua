@@ -65,7 +65,7 @@ local function infer_type(line)
   end
 end
 
----@param content table
+---@param content string text from the active doc file
 ---@return table md_lines
 local function parse_content(content)
   local md_lines = {}
