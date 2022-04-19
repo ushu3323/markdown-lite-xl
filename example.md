@@ -1,68 +1,137 @@
-# Headers:
+# Markdown Cheat Sheet
 
-# Header 1
-## Header 2
-### Header 3
-#### Header 4
-##### Header 5
-###### Header 6
+## Basic Syntax
 
-## Paragraph:
-TODO: wrap text
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Doloribus voluptates iste cum quis id perferendis asperiores vero pariatur, ex maiores atque minima praesentium, nulla itaque autem eligendi esse quae voluptatibus.
-Voluptas odio consequatur veritatis qui recusandae distinctio eaque repudiandae omnis maxime, impedit provident ipsum voluptates sit magni eveniet sed accusamus optio laboriosam officia, illo ab quaerat culpa. Voluptatem, culpa corrupti.
+These are the elements outlined in John Gruber’s original design document. All Markdown applications support these elements.
 
-##                    Codeblock
+### Heading
 
-    local function markdown_code_example(foo, bar, table)
-      -- Todo: add syntax highlighting (probably using lite-xl syntax settings)
-      print("Hello markdown!")
-      
-      local isMarkdown = true
-      for key, value in pairs(table) do
-        core.log("key: %s | value: %s", key, value)
-      end
-      
-      return isMarkdown
-    end
-    
-```lua
-  local foo = "bar"
-  print(foo) -- Output: bar
+# H1
+## H2
+### H3
+#### H4
+##### H5
+###### H6
+
+### Bold
+
+**bold text** __bold text__
+
+### Italic
+
+*italicized text* _italicized text_
+
+### Blockquote
+
+> blockquote
+
+### Ordered List
+
+1. First item
+2. Second item
+3) Third item 3) 69. kek
+
+### Unordered List
+
+- First item
+- Second item
+- Third item
+
+### Unordered List #2
+
+* First item
+* Second item
+* Third item
+
+
+### Code
+
+`code`
+
+Some text with `code` in between
+and a ```
+codeblock
 ```
 
-## Lists:
-### Unorderer list:
-- List Item 1
-- List Item 2
-- List Item 3
-- List Item 4
+with more text that has `code in between` ..?!?
 
-## Ordered list:
-1. List Item 1
-1. List Item 2
-1. List Item 3
+`hello-kebab`
 
+### Code Block
 
+```python
+import tests
 
-# MORE TODO:
+if tests.DoesHighlightingWork() = True:
+  print("yay! it works!")
+else
+  print("aw man, let's try harder next time")
 
-TODO: change listitem dot style depending on indentation depth
-TODO: add margin
-    - Nodo 1 but shown as codeblock
-- Node 2
-  - sub node 1 of node 1
-  - sub-node 2 of node 1
-    - sub-sub-node 1 of sub-node 2 of node 1
-      - sub-sub-sub-node 1 of sub-sub-node 1 of sub-node 2 of node 1
-        - sub-sub-sub-node 1 of sub-sub-node 1 of sub-node 2 of node 1
-          - sub-sub-sub-node 1 of sub-sub-node 1 of sub-node 2 of node 1
-            - sub-sub-sub-node 1 of sub-sub-node 1 of sub-node 2 of node 1
-              - sub-sub-sub-node 1 of sub-sub-node 1 of sub-node 2 of node 1
-                - sub-sub-sub-node 1 of sub-sub-node 1 of sub-node 2 of node 1
-  - sub-node 3 of node 1
-- Node 3
+# end of file lol
+```
 
-      - Node 1 but shown as codeblock
+### Horizontal Rule
 
+---
 
+***
+
+### Link
+
+[Markdown Guide](https://www.markdownguide.org)
+
+[text lol][1]
+
+[1]: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+### Image
+
+![alt text](https://www.markdownguide.org/assets/images/tux.png)
+
+## Extended Syntax
+
+These elements extend the basic syntax by adding additional features. Not all Markdown applications support these elements.
+
+### Table
+
+| Syntax       | Description  |
+| ------------ | ------------ |
+| Header       | Title        |
+| Paragraph    | Text         |
+
+### Footnote
+
+Here's a sentence with a footnote. [^1]
+
+[^1]: This is the footnote.
+
+### Heading ID 
+
+### My Great Heading {#custom-id}
+
+### Definition List
+
+term
+: definition
+
+### Strikethrough
+
+~~The world is flat.~~
+
+### Task List
+
+- [x] Write the press release
+- [ ] Update the website
+- [ ] Contact the media
+
+### Highlight
+
+I need to highlight these ==very important words==.
+
+### Subscript
+
+H~2~O
+
+### Superscript
+
+X^2^
