@@ -48,26 +48,26 @@ These are the elements outlined in John Gruber’s original design document. All
 
 `code`
 
-Some text with `code` in between
-and a ```
+# Some text with `code` in between
+    and a ```c
 codeblock
-```
+\```
 
-with more text that has `code in between` ..?!?
+# with more text that has `code in between` ..?!?
 
-`hello-kebab`
+# `hello-kebab`
 
 ### Code Block
 
 ```python
-import tests
+  import tests
 
-if tests.DoesHighlightingWork() = True:
-  print("yay! it works!")
-else
-  print("aw man, let's try harder next time")
+  if tests.DoesHighlightingWork() = True:
+    print("yay! it works!")
+  else
+    print("aw man, let's try harder next time")
 
-# end of file lol
+  # end of file lol
 ```
 
 ### Horizontal Rule
