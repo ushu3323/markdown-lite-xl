@@ -10,8 +10,8 @@ local style = require "core.style"
 local View = require "core.view"
 local common = require "core.common"
 
-local utils = require "utils" or require "plugins.markdown-xl.utils"
-local md = require "luamd" or require "plugins.markdown-xl.luamd"
+local utils = require "plugins.markdown-xl.utils"
+local md = require "plugins.markdown-xl.luamd"
 local treeview_loaded, treeview = core.try(require, "plugins.treeview")
 
 local main = {}
@@ -87,7 +87,7 @@ end
 
 function MarkdownView:get_name()
   local initial_view = self.initial_active_view or core.active_view
-  return "Preview " .. (initial_view.doc.abs_name or initial_view.doc:get_name())
+  return "Preview " .. (initial_view:get_name())
 end
 
 function MarkdownView:set_target_size(axis, value)
@@ -156,7 +156,7 @@ local function render_node(node, cfg)
     local pre = string.rep("│   ", cfg.depth)
     if cfg.depth > 0 then
       pre = pre .. ((outer_i == #node and "└──") or "├──")
-    else 
+    else
       pre = "├──"
     end
     print(pre .. text)
@@ -165,7 +165,7 @@ local function render_node(node, cfg)
 
   for i, childnode in ipairs(node) do
     outer_i = i
-    
+
     local child_type = type(childnode)
     if child_type == "string" then
       ---@type string
@@ -188,7 +188,7 @@ local function render_node(node, cfg)
         cfg.top = cfg.top + cfg.style.font:get_height()
         cfg.total_scrollable_size = cfg.total_scrollable_size + cfg.style.font:get_height()
       end
-      
+
     elseif child_type == "table" then
       if childnode.type then
         _print("childnode MD type: " .. childnode.type)
@@ -210,14 +210,14 @@ function MarkdownView:draw()
     self:draw_scrollbar()
     return
   end
-  
+
   self:draw_background(style.background)
   -- Visible top-left View corner
   local ox, oy = self:get_content_offset()
 
   local top = oy
   local left = ox + style.padding.x
-  
+
   local cfg = render_node(self.content, { top = top, left = left })
   self.scrollable_size = cfg.total_scrollable_size
   self:draw_scrollbar()
