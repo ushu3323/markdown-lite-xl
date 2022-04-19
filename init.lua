@@ -15,77 +15,59 @@ local md = require "luamd" or require "plugins.markdown-xl.luamd"
 local treeview_loaded, treeview = core.try(require, "plugins.treeview")
 
 local main = {}
-local markdown_types = {
-  { name = "ol>li", exp = "^%d+[.- ]%s*([%w].*)", font = style.font, color = style.text, prefix = " 1 ", sufix = "", padding = { x = 0, y = 0 } },
-  { name = "ul>li", exp = "^%-%s*(%w[%w%s]*)", font = style.font, color = style.text, prefix = "  • ", sufix = "", padding = { x = 0, y = 0 } },
-  { name = "code", exp = "^%s%s%s%s(.*)$", font = style.code_font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h1", exp = "^%s*#%s*([%w%.,_].*)$", font = style.font:copy(32 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h2", exp = "^%s*##%s*([%w%.,_].*)$", font = style.font:copy(24 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h3", exp = "^%s*###%s*([%w%.,_].*)$", font = style.font:copy(19 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h4", exp = "^%s*####%s*([%w%.,_].*)$", font = style.font:copy(16 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h5", exp = "^%s*#####%s*([%w%.,_].*)$", font = style.font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h6", exp = "^%s*######%s*([%w%.,_].*)$", font = style.font:copy(12 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "p", exp = "(.*)", font = style.font, color = style.text },
-}
-
+-- Set this to true so you can see luamd tree printed in console.
+-- it has some side effects like view not drawing properly
+-- this is to prevent tree printing to not spam console
+local DEBUG = true
 -- Log both lite-xl log builtin and console
 local function log(logtext, format)
   core.log(logtext, format)
-  print(logtext, format)
+  print(logtext)
 end
+
+---@alias corestyle unknown
+---@type number SCALE
+
+
+---@class mdStyle
+---@field name string
+---@field font corestyle
+---@field color corestyle
+---@field prefix string
+---@field sufix string
+---@field padding {x: number, y: number}
+---@field attributes? any
+
+---@type mdStyle[]
+local markdown_types = {
+  { name = "ol>li", font = style.font, color = style.text, prefix = " 1 ", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "ul>li", font = style.font, color = style.text, prefix = "  • ", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "code", font = style.code_font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
+  { name = "h1", font = style.font:copy(32 * SCALE), color = style.text, prefix = "", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "h2", font = style.font:copy(24 * SCALE), color = style.text, prefix = "", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "h3", font = style.font:copy(19 * SCALE), color = style.text, prefix = "", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "h4", font = style.font:copy(16 * SCALE), color = style.text, prefix = "", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "h5", font = style.font:copy(13 * SCALE), color = style.text, prefix = "", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "h6", font = style.font:copy(12 * SCALE), color = style.text, prefix = "", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "p", font = style.font, color = style.text },
+}
 
 ---Find a markdown type by name
 ---@param name string
----@return table markdown_type
+---@return table mdStyle
 local function find_markdown_type(name)
   assert(type(name) == "string", "'name' parameter should be a string, got " .. type(name))
   for _, type in ipairs(markdown_types) do
+    -- set default properties
+    ---@type mdStyle
+    type.name = type.name or "p"
+    type.font = type.font or style.font
+    type.color = type.color or style.text
+    type.prefix = type.prefix or ""
+    type.sufix = type.sufix or ""
+    type.padding = type.padding or {x = 0,y = 0}
     if type.name == name then return type end
   end
-end
-
----@param text string
----@param return_table boolean
-local function lines(text, return_table)
-  if return_table then
-    local res = {}
-    for match in (text .. "\n"):gmatch("(.-)\n") do
-      table.insert(res, match)
-    end
-    return res
-  end
-  return (text .. "\n"):gmatch("(.-)\n")
-end
-
----@param line string
-local function infer_type(line)
-  -- TODO: add user custom types
-  for _, type in ipairs(markdown_types) do
-    local exp = type.exp
-    local match = string.match(line, exp)
-    if match then return match, type.name end
-  end
-end
-
----@param content string text from the active doc file
----@return table md_lines
-local function parse_content(content)
-  local md_lines = {}
-  for line in lines(content) do
-    local text, type = infer_type(line)
-    if text then
-      table.insert(md_lines, {
-        text = text,
-        type = type
-      })
-    else
-      table.insert(md_lines, {
-        text = line,
-        type = "p"
-      })
-    end
-  end
-  return md_lines
 end
 
 local MarkdownView = View:extend()
@@ -97,7 +79,7 @@ function MarkdownView:new()
   self.text_content = ""
   self.content = {}
   self.treeview_target_size = treeview.target_size
-
+  self.need_draw = false
   -- 'View' class properties
   self.scrollable = true
   self.scrollable_size = 0
@@ -123,54 +105,123 @@ end
 
 function MarkdownView:get_scrollable_size()
   -- self.scrollable_size is calculated when drawing lines
+  if not DEBUG then self.need_draw = true end
   return self.scrollable_size + self.size.y
 end
 
 function MarkdownView:update(...)
   -- Get Doc contents
   local new_content = self.initial_active_view.doc:get_text(1, 1, math.huge, math.huge)
-
   -- TODO: Sync Doc scroll position with the view
   -- self.scroll.to.y = self.initial_active_view.doc.scroll.y
 
   -- Update view only if the doc has been modified
-  if (self.text_content ~= new_content) then
-    self.content = parse_content(new_content)
+  if (type(new_content) == "string" and self.text_content ~= new_content) then
     self.text_content = new_content
+    local success, tree, links = core.try(function() return md.read(self.text_content) end)
+    if success then
     if DEBUG then
       utils.print_table(self.content)
     end
+      self.content = tree
+      self.need_draw = true
+    else
+      log("Markdown-xl: error while trying to tokenize (temporary error)")
+    end
+  end
   MarkdownView.super.update(self, ...)
 end
 
-function MarkdownView:draw()
-  self:draw_background(style.background)
+---@class NodeConfig
+---@field top number
+---@field left number
+---@field depth number recursion depth
+---@field total_scrollable_size number
+---@field style mdStyle style used in render
 
+--- Recursive tree renderer
+---@param node table markdown tree generated with `luamd`
+---@param cfg? NodeConfig
+---@return NodeConfig
+local function render_node(node, cfg)
+  if not cfg then cfg = {} end
+  if not cfg.top then cfg.top = 0 end
+  if not cfg.left then cfg.left = 0 end
+  if not cfg.total_scrollable_size then cfg.total_scrollable_size = 0 end
+  if not cfg.depth then cfg.depth = 0 end
+
+  local outer_i = 0
+  local _print = function(text)
+    if not DEBUG then return end
+    local pre = string.rep("│   ", cfg.depth)
+    if cfg.depth > 0 then
+      pre = pre .. ((outer_i == #node and "└──") or "├──")
+    else 
+      pre = "├──"
+    end
+    print(pre .. text)
+  end
+  _print("node LUA type: " .. type(node))
+
+  for i, childnode in ipairs(node) do
+    outer_i = i
+    
+    local child_type = type(childnode)
+    if child_type == "string" then
+      ---@type string
+      local text = cfg.style.prefix .. childnode .. cfg.style.sufix
+      _print("childnode LUA type: text -> rendering '".. text:gsub("\n", "\\n") .."'")
+      if text:match("\n") then
+        text = ((DEBUG and "BREAKLINE | DEPTH: " .. cfg.depth) or " ")
+        local tmp_style = find_markdown_type("p")
+        common.draw_text(
+          tmp_style.font, style.syntax["comment"], text,
+          "left", cfg.left, cfg.top, tmp_style.font:get_height(), tmp_style.font:get_height()
+        )
+        cfg.top = cfg.top + tmp_style.font:get_height()
+        cfg.total_scrollable_size = cfg.total_scrollable_size + tmp_style.font:get_height()
+      else
+        common.draw_text(
+          cfg.style.font, cfg.style.color, text,
+          "left", cfg.left + style.padding.x * cfg.depth, cfg.top, cfg.style.font:get_height(), cfg.style.font:get_height()
+        )
+        cfg.top = cfg.top + cfg.style.font:get_height()
+        cfg.total_scrollable_size = cfg.total_scrollable_size + cfg.style.font:get_height()
+      end
+      
+    elseif child_type == "table" then
+      if childnode.type then
+        _print("childnode MD type: " .. childnode.type)
+        cfg.style = find_markdown_type(childnode.type) or find_markdown_type("p") -- 'p' used as fallback
+        cfg.style.attributes = childnode.attributes or nil
+      end
+      cfg.depth = cfg.depth + 1
+      cfg = render_node(childnode, cfg)
+      cfg.depth = cfg.depth - 1
+    else
+      _print("childnode LUA type: " .. type(childnode) .. " -> ignoring")
+    end
+  end
+  return cfg
+end
+
+function MarkdownView:draw()
+  if not self.need_draw then
+    self:draw_scrollbar()
+    return
+  end
+  
+  self:draw_background(style.background)
   -- Visible top-left View corner
   local ox, oy = self:get_content_offset()
 
   local top = oy
   local left = ox + style.padding.x
-
-  local total_scrollable_size = 0
-  for i, line in ipairs(self.content) do
-    local config = find_markdown_type(line.type)
-
-    -- Debug "tokenizer" -> local text = (line.type or "unknown") .. "(" .. (line.text or "NO_CONTENT!") .. ")"
-    local text = (config.prefix or "") .. line.text
-
-    common.draw_text(
-      config.font, config.color, text,
-      "left", left, top, config.font:get_height(), config.font:get_height()
-    )
-    -- Draw next line below so it doesn't overlaps
-    top = top + config.font:get_height()
-
-    -- Calculates scrollaable max size (used when draw_scrollbar View method is called)
-    total_scrollable_size = total_scrollable_size + config.font:get_height()
-  end
-  self.scrollable_size = total_scrollable_size
+  
+  local cfg = render_node(self.content, { top = top, left = left })
+  self.scrollable_size = cfg.total_scrollable_size
   self:draw_scrollbar()
+  self.need_draw = false
 end
 
 function main.start_markdown()
@@ -200,6 +251,10 @@ command.add(nil, {
     else
       log("Markdown View already initialized")
     end
+  end,
+  ["markdown:toggle debug"] = function ()
+    DEBUG = not DEBUG
+    log("Markdown DEBUG " .. ((DEBUG and "enabled") or "disabled"))
   end
 })
 
