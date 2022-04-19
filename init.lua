@@ -10,6 +10,7 @@ local style = require "core.style"
 local View = require "core.view"
 local common = require "core.common"
 
+local utils = require "utils" or require "plugins.markdown-xl.utils"
 local md = require "luamd" or require "plugins.markdown-xl.luamd"
 local treeview_loaded, treeview = core.try(require, "plugins.treeview")
 
@@ -136,7 +137,9 @@ function MarkdownView:update(...)
   if (self.text_content ~= new_content) then
     self.content = parse_content(new_content)
     self.text_content = new_content
-  end
+    if DEBUG then
+      utils.print_table(self.content)
+    end
   MarkdownView.super.update(self, ...)
 end
 
