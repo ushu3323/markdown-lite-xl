@@ -28,6 +28,11 @@ local markdown_types = {
   { name = "p", exp = "(.*)", font = style.font, color = style.text },
 }
 
+-- Set this to true so you can see luamd tree printed in console.
+-- it has some side effects like view not drawing properly
+-- this is to prevent tree printing to not spam console
+local DEBUG = true
+
 -- Log both lite-xl log builtin and console
 local function log(logtext, format)
   core.log(logtext, format)
@@ -123,6 +128,7 @@ end
 
 function MarkdownView:get_scrollable_size()
   -- self.scrollable_size is calculated when drawing lines
+  if not DEBUG then self.need_draw = true end
   return self.scrollable_size + self.size.y
 end
 
@@ -200,6 +206,10 @@ command.add(nil, {
     else
       log("Markdown View already initialized")
     end
+  end,
+  ["markdown:toggle debug"] = function ()
+    DEBUG = not DEBUG
+    log("Markdown DEBUG " .. ((DEBUG and "enabled") or "disabled"))
   end
 })
 
