@@ -34,9 +34,9 @@ local markdown_types = {
 local DEBUG = true
 
 -- Log both lite-xl log builtin and console
-local function log(logtext, format)
-  core.log(logtext, format)
-  print(logtext, format)
+local function log(logtext, _format)
+  core.log(logtext, _format)
+  print(string.format(logtext, _format))
 end
 
 ---Find a markdown type by name
@@ -146,7 +146,8 @@ function MarkdownView:update(...)
     if DEBUG then
       utils.print_table(self.content)
     end
-  MarkdownView.super.update(self, ...)
+    MarkdownView.super.update(self, ...)
+  end
 end
 
 function MarkdownView:draw()
