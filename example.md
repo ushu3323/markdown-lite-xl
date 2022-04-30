@@ -51,7 +51,7 @@ These are the elements outlined in John Gruber’s original design document. All
 # Some text with `code` in between
     and a ```c
 codeblock
-\```
+```
 
 # with more text that has `code in between` ..?!?
 
