@@ -12,7 +12,6 @@ local common = require "core.common"
 
 local utils = require "plugins.markdown-xl.utils"
 local md = require "plugins.markdown-xl.luamd"
-local treeview_loaded, treeview = core.try(require, "plugins.treeview")
 
 local main = {}
 
@@ -106,11 +105,9 @@ local MarkdownView = View:extend()
 
 function MarkdownView:new()
   MarkdownView.super.new(self)
-  self.target_size = 500 * SCALE
   self.initial_active_view = core.active_view
   self.text_content = ""
   self.content = {}
-  self.treeview_target_size = treeview.target_size
 
   -- 'View' class properties
   self.scrollable = true
@@ -120,14 +117,6 @@ end
 function MarkdownView:get_name()
   local initial_view = self.initial_active_view or core.active_view
   return "Preview " .. (initial_view.doc.abs_name or initial_view.doc:get_name())
-end
-
-function MarkdownView:set_target_size(axis, value)
-  if axis == "x" then
-    self.target_size = value
-    self.treeview_target_size = treeview.target_size
-    return true
-  end
 end
 
 function MarkdownView:try_close(...)
@@ -264,13 +253,6 @@ function main.start_markdown()
   node = core.root_view:get_active_node_default()
   node:add_view(main.view)
   core.root_view.root_node:update_layout()
-
-  function main.view:update(...)
-    local dest = (self.target_size or 0) + self.treeview_target_size
-
-    self:move_towards(self.size, "x", dest)
-    MarkdownView.update(self, ...)
-  end
 end
 
 command.add(nil, {
