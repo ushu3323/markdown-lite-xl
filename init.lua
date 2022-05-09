@@ -15,9 +15,15 @@ local md = require "plugins.markdown-xl.luamd"
 local treeview_loaded, treeview = core.try(require, "plugins.treeview")
 
 local main = {}
+
+local fonts = {
+  bold = renderer.font.load(DATADIR .. "/fonts/FiraSans-Regular.ttf", 15 * SCALE, { bold = true }),
+  italic = renderer.font.load(DATADIR .. "/fonts/FiraSans-Regular.ttf", 15 * SCALE, { italic = true }),
+  normal = renderer.font.load(DATADIR .. "/fonts/FiraSans-Regular.ttf", 15 * SCALE)
+}
 local markdown_types = {
-  { name = "ol>li", exp = "^%d+[.- ]%s*([%w].*)", font = style.font, color = style.text, prefix = " 1 ", sufix = "", padding = { x = 0, y = 0 } },
-  { name = "ul>li", exp = "^%-%s*(%w[%w%s]*)", font = style.font, color = style.text, prefix = "  • ", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "ol>li", exp = "^%d+[.- ]%s*([%w].*)", font = fonts.normal, color = style.text, prefix = " 1 ", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "ul>li", exp = "^%-%s*(%w[%w%s]*)", font = fonts.normal, color = style.text, prefix = "  • ", sufix = "", padding = { x = 0, y = 0 } },
   { name = "code", exp = "^%s%s%s%s(.*)$", font = style.code_font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
   { name = "h1", exp = "^%s*#%s*([%w%.,_].*)$", font = style.font:copy(32 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
   { name = "h2", exp = "^%s*##%s*([%w%.,_].*)$", font = style.font:copy(24 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
@@ -26,6 +32,9 @@ local markdown_types = {
   { name = "h5", exp = "^%s*#####%s*([%w%.,_].*)$", font = style.font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
   { name = "h6", exp = "^%s*######%s*([%w%.,_].*)$", font = style.font:copy(12 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
   { name = "p", exp = "(.*)", font = style.font, color = style.text },
+  { name = "strong", inline = true, font = fonts.bold, color = style.text, padding = { x = 0, y = 0 } },
+  { name = "em", inline = true, font = fonts.italic, color = style.text, padding = { x = 0, y = 0 } },
+  { name = "strike", inline = true, font = fonts.normal, color = style.dim, padding = { x = 0, y = 0 } }
 }
 
 -- Set this to true so you can see luamd tree printed in console.
@@ -141,13 +150,89 @@ function MarkdownView:update(...)
 
   -- Update view only if the doc has been modified
   if (self.text_content ~= new_content) then
-    self.content = parse_content(new_content)
     self.text_content = new_content
+    self.content = md.read(self.text_content)
     if DEBUG then
       utils.print_table(self.content)
+      print(string.rep("---*", 20) .. "---")
     end
     MarkdownView.super.update(self, ...)
   end
+end
+
+--- @class RenderContext
+--- @field view {bounds: {top: number, left: number}, size: { width: number, height: number}}
+--- @field top number
+--- @field left number
+
+---@type RenderContext
+local renderContext = {}
+
+---@param line string[]
+---@param styletype table
+local function renderLine(line, styletype)
+  local ctx = renderContext
+
+  for i, text in ipairs(line) do
+    text = text .. (i ~= #line and " " or "")
+    common.draw_text(
+      styletype.font, styletype.color, text,
+      "left", ctx.left + ctx.view.bounds.left, ctx.top + ctx.view.bounds.top,
+      styletype.font:get_width(text),
+      styletype.font:get_height()
+    )
+    ctx.left = ctx.left + styletype.font:get_width(text)
+  end
+end
+
+local function renderTree(tree)
+  local ctx = renderContext
+
+  -- Subtree render logic
+  if tree.type then
+    local styletype = find_markdown_type(tree.type)
+    if not tree.content then return end
+    for i, item in ipairs(tree.content) do
+      if type(item) == "table" then
+        -- render inline modifiers (like **bold**, *italic*, etc.) and other markdown types inserted in this subtree
+        renderTree(item)
+      elseif type(item) == "string" then
+        if item == "\n" then
+          ctx.top = ctx.top + styletype.font:get_height()
+          ctx.left = 0 + style.padding.x
+        else
+          local wordlist = {}
+          for match in string.gmatch(item, "([^" .. " " .. "]+)") do
+            table.insert(wordlist, match)
+          end
+          renderLine(wordlist, styletype)
+        end
+      else
+        log("Markdown-xl [renderTree]: Unknown type: " .. type(item) .. "skiping")
+      end
+    end
+    local py = styletype.padding and styletype.padding.y or 0
+    if not styletype.inline then
+      ctx.top = ctx.top + styletype.font:get_height() + py
+      ctx.left = 0 + style.padding.x
+    end
+    return
+  end
+
+  -- Root tree
+  for i = 1, #tree, 1 do
+    local subtree = tree[i]
+    if type(subtree) == "table" then
+      renderTree(subtree)
+    elseif type(subtree) == "string" then
+      local text = subtree
+      if text == "\n" then
+        ctx.top = ctx.top + style.padding.y
+        ctx.left = 0 + style.padding.x
+      end
+    end
+  end
+
 end
 
 function MarkdownView:draw()
@@ -156,27 +241,17 @@ function MarkdownView:draw()
   -- Visible top-left View corner
   local ox, oy = self:get_content_offset()
 
-  local top = oy
-  local left = ox + style.padding.x
+  renderContext = {
+    view = {
+      bounds = { top = oy, left = ox },
+      size = { x = self.size.x, y = self.size.y }
+    },
+    top = 0,
+    left = 0 + style.padding.x,
+  }
+  renderTree(self.content)
 
-  local total_scrollable_size = 0
-  for i, line in ipairs(self.content) do
-    local config = find_markdown_type(line.type)
-
-    -- Debug "tokenizer" -> local text = (line.type or "unknown") .. "(" .. (line.text or "NO_CONTENT!") .. ")"
-    local text = (config.prefix or "") .. line.text
-
-    common.draw_text(
-      config.font, config.color, text,
-      "left", left, top, config.font:get_height(), config.font:get_height()
-    )
-    -- Draw next line below so it doesn't overlaps
-    top = top + config.font:get_height()
-
-    -- Calculates scrollaable max size (used when draw_scrollbar View method is called)
-    total_scrollable_size = total_scrollable_size + config.font:get_height()
-  end
-  self.scrollable_size = total_scrollable_size
+  self.scrollable_size = renderContext.top
   self:draw_scrollbar()
 end
 
