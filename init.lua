@@ -191,8 +191,12 @@ local function renderTree(tree)
           ctx.left = 0 + style.padding.x
         else
           local wordlist = {}
+          local match -- keep last match
           for match in string.gmatch(item, "([^" .. " " .. "]+)") do
             table.insert(wordlist, match)
+          end
+          if not match then
+            table.insert(wordlist, "")
           end
           renderLine(wordlist, styletype)
         end
