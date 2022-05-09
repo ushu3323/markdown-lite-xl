@@ -145,8 +145,8 @@ function MarkdownView:update(...)
       utils.print_table(self.content)
       print(string.rep("---*", 20) .. "---")
     end
-    MarkdownView.super.update(self, ...)
   end
+  MarkdownView.super.update(self, ...)
 end
 
 --- @class RenderContext
