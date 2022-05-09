@@ -30,7 +30,7 @@ local lower = string.lower
 local tonumber = tonumber -- luacheck: no unused
 local type = type
 local pcall = pcall
-
+local utils = require "plugins.markdown-xl.utils"
 --------------------------------------------------------------------------------
 -- Stream Utils
 --------------------------------------------------------------------------------
@@ -120,6 +120,9 @@ local function lineRead(str, start, finish)
     local delim, dstart, dfinish = findDelim(str, searchIndex, finish)
     if not delim then
       linkEscape(sub(str, searchIndex, finish), tree)
+      if tree[#tree] == '' then
+        tree[#tree] = nil
+      end
       break
     end
     if dstart > searchIndex then
@@ -129,12 +132,14 @@ local function lineRead(str, start, finish)
     if nextdstart then
       if delim == '`' then
         tree[#tree + 1] = {
-          sub(str, dfinish + 1, nextdstart - 1),
+          content = sub(str, dfinish + 1, nextdstart - 1),
           type = 'code'
         }
       else
-        local subtree = lineRead(str, dfinish + 1, nextdstart - 1)
-        subtree.type = lineDeimiterNames[delim]
+        local subtree = {
+          content = lineRead(str, dfinish+1, nextdstart-1),
+          type = lineDeimiterNames[delim]
+        }
         tree[#tree + 1] = subtree
       end
       searchIndex = nextdfinish + 1
@@ -243,7 +248,7 @@ local function readSimple(pop, peek, tree, links)
   local m, rest = match(line, PATTERN_HEADER)
   if m then
     tree[#tree + 1] = {
-      lineRead(rest),
+      content = lineRead(rest),
       type = "h" .. #m
     }
     tree[#tree + 1] = NEWLINE
@@ -264,6 +269,7 @@ local function readSimple(pop, peek, tree, links)
   if syntax then
     local indent = getIndentLevel(line)
     local code = {
+      content = {},
       type = "code"
     }
     if #syntax > 0 then
@@ -271,19 +277,16 @@ local function readSimple(pop, peek, tree, links)
         class = format('language-%s', lower(syntax))
       }
     end
-    local pre = {
-      type = "pre",
-      [1] = code
-    }
-    tree[#tree + 1] = pre
+    tree[#tree + 1] = code
     local popstr = pop()
     while not (match(popstr, "^%s*%`%`%`$") and getIndentLevel(peek()) == indent) do
+      code.content[#code.content+1] = peek()
+      code.content[#code.content+1] = NEWLINE
+      -- code[#code + 1] = '\r\n'
       popstr = pop()
       if popstr == nil then
         return
       end
-      code[#code + 1] = peek()
-      code[#code + 1] = '\r\n'
     end
     return pop()
   end
@@ -298,28 +301,28 @@ local function readSimple(pop, peek, tree, links)
   -- Test for header type two
   local nextLine = pop()
   if nextLine and match(nextLine, "^%s*%=+$") then
-    tree[#tree + 1] = { lineRead(line), type = "h1" }
+    tree[#tree + 1] = { content = lineRead(line), type = "h1" }
     return pop()
   elseif nextLine and match(nextLine, "^%s*%-+$") then
-    tree[#tree + 1] = { lineRead(line), type = "h2" }
+    tree[#tree + 1] = { content = lineRead(line), type = "h2" }
     return pop()
   end
 
   -- Do Paragraph
+
   local p = {
-    lineRead(line), NEWLINE,
+    content = lineRead(line),
     type = "p"
   }
+
   tree[#tree + 1] = p
   while nextLine and not isSpecialLine(nextLine) do
-    p[#p + 1] = lineRead(nextLine)
-    p[#p + 1] = NEWLINE
+    for _, v in ipairs(lineRead(nextLine)) do
+      p.content[#p.content+1] = v
+    end
     nextLine = pop()
   end
-  p[#p] = nil
-  tree[#tree + 1] = NEWLINE
   return peek()
-
 end
 
 --------------------------------------------------------------------------------
