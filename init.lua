@@ -164,6 +164,15 @@ local function renderLine(line, styletype)
 
   for i, text in ipairs(line) do
     text = text .. (i ~= #line and " " or "")
+
+    local nextwidth = ctx.left + styletype.font:get_width(text)
+    -- If the text being drawn has overflow, continue in the next line
+    if i > 1 and nextwidth > ctx.view.size.x then
+      local py = styletype.padding and styletype.padding.y or 0
+      ctx.top = ctx.top + styletype.font:get_height() + py
+      ctx.left = 0 + style.padding.x
+    end
+
     common.draw_text(
       styletype.font, styletype.color, text,
       "left", ctx.left + ctx.view.bounds.left, ctx.top + ctx.view.bounds.top,
