@@ -21,15 +21,15 @@ local fonts = {
   normal = renderer.font.load(DATADIR .. "/fonts/FiraSans-Regular.ttf", 15 * SCALE)
 }
 local markdown_types = {
-  { name = "ol>li", exp = "^%d+[.- ]%s*([%w].*)", font = fonts.normal, color = style.text, prefix = " 1 ", sufix = "", padding = { x = 0, y = 0 } },
-  { name = "ul>li", exp = "^%-%s*(%w[%w%s]*)", font = fonts.normal, color = style.text, prefix = "  • ", sufix = "", padding = { x = 0, y = 0 } },
-  { name = "code", exp = "^%s%s%s%s(.*)$", font = style.code_font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h1", exp = "^%s*#%s*([%w%.,_].*)$", font = style.font:copy(32 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h2", exp = "^%s*##%s*([%w%.,_].*)$", font = style.font:copy(24 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h3", exp = "^%s*###%s*([%w%.,_].*)$", font = style.font:copy(19 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h4", exp = "^%s*####%s*([%w%.,_].*)$", font = style.font:copy(16 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h5", exp = "^%s*#####%s*([%w%.,_].*)$", font = style.font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h6", exp = "^%s*######%s*([%w%.,_].*)$", font = style.font:copy(12 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
+  { name = "ol>li", font = fonts.normal, color = style.text, prefix = " 1 ", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "ul>li", font = fonts.normal, color = style.text, prefix = "  • ", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "code", font = style.code_font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
+  { name = "h1", font = style.font:copy(32 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
+  { name = "h2", font = style.font:copy(24 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
+  { name = "h3", font = style.font:copy(19 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
+  { name = "h4", font = style.font:copy(16 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
+  { name = "h5", font = style.font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
+  { name = "h6", font = style.font:copy(12 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
   { name = "p", exp = "(.*)", font = style.font, color = style.text },
   { name = "strong", inline = true, font = fonts.bold, color = style.text, padding = { x = 0, y = 0 } },
   { name = "em", inline = true, font = fonts.italic, color = style.text, padding = { x = 0, y = 0 } },
@@ -57,49 +57,6 @@ local function find_markdown_type(name)
   end
 end
 
----@param text string
----@param return_table boolean
-local function lines(text, return_table)
-  if return_table then
-    local res = {}
-    for match in (text .. "\n"):gmatch("(.-)\n") do
-      table.insert(res, match)
-    end
-    return res
-  end
-  return (text .. "\n"):gmatch("(.-)\n")
-end
-
----@param line string
-local function infer_type(line)
-  -- TODO: add user custom types
-  for _, type in ipairs(markdown_types) do
-    local exp = type.exp
-    local match = string.match(line, exp)
-    if match then return match, type.name end
-  end
-end
-
----@param content string text from the active doc file
----@return table md_lines
-local function parse_content(content)
-  local md_lines = {}
-  for line in lines(content) do
-    local text, type = infer_type(line)
-    if text then
-      table.insert(md_lines, {
-        text = text,
-        type = type
-      })
-    else
-      table.insert(md_lines, {
-        text = line,
-        type = "p"
-      })
-    end
-  end
-  return md_lines
-end
 
 local MarkdownView = View:extend()
 
