@@ -10,8 +10,8 @@ local style = require "core.style"
 local View = require "core.view"
 local common = require "core.common"
 
-local utils = require "utils" or require "plugins.markdown-xl.utils"
-local md = require "luamd" or require "plugins.markdown-xl.luamd"
+local utils = require "plugins.markdown-xl.utils"
+local md = require "plugins.markdown-xl.luamd"
 local treeview_loaded, treeview = core.try(require, "plugins.treeview")
 
 local main = {}
