@@ -277,7 +277,13 @@ local function readSimple(pop, peek, tree, links)
         class = format('language-%s', lower(syntax))
       }
     end
-    tree[#tree + 1] = code
+
+    local pre = {
+      content = {code},
+      type = "pre"
+    }
+
+    tree[#tree + 1] = pre
     local popstr = pop()
     while not (match(popstr, "^%s*%`%`%`$") and getIndentLevel(peek()) == indent) do
       code.content[#code.content+1] = peek()

@@ -16,21 +16,22 @@ local md = require "plugins.markdown-xl.luamd"
 local main = {}
 
 local fonts = {
-  bold = renderer.font.load(DATADIR .. "/fonts/FiraSans-Regular.ttf", 15 * SCALE, { bold = true }),
+  bold = renderer.font.load(DATADIR .. "/fonts/FiraSans-Regular.ttf", 16 * SCALE, { bold = true, antialiasing = "grayscale" }),
   italic = renderer.font.load(DATADIR .. "/fonts/FiraSans-Regular.ttf", 15 * SCALE, { italic = true }),
   normal = renderer.font.load(DATADIR .. "/fonts/FiraSans-Regular.ttf", 15 * SCALE)
 }
 local markdown_types = {
   { name = "ol>li", font = fonts.normal, color = style.text, prefix = " 1 ", sufix = "", padding = { x = 0, y = 0 } },
   { name = "ul>li", font = fonts.normal, color = style.text, prefix = "  • ", sufix = "", padding = { x = 0, y = 0 } },
+  { name = "pre", font = style.code_font:copy(13 * SCALE), color = style.text, padding = { x = 10, y = 10 }, margin = { x = 10, y = 10 } },
   { name = "code", font = style.code_font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h1", font = style.font:copy(32 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h2", font = style.font:copy(24 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h3", font = style.font:copy(19 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h4", font = style.font:copy(16 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "h5", font = style.font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
+  { name = "h1", font = style.font:copy(32 * SCALE), color = style.text, padding = { x = 0, y = 20 } },
+  { name = "h2", font = style.font:copy(24 * SCALE), color = style.text, padding = { x = 0, y = 20 } },
+  { name = "h3", font = style.font:copy(19 * SCALE), color = style.text, padding = { x = 0, y = 20 } },
+  { name = "h4", font = style.font:copy(16 * SCALE), color = style.text, padding = { x = 0, y = 20 } },
+  { name = "h5", font = style.font:copy(13 * SCALE), color = style.text, padding = { x = 0, y = 20 } },
   { name = "h6", font = style.font:copy(12 * SCALE), color = style.text, padding = { x = 0, y = 0 } },
-  { name = "p", exp = "(.*)", font = style.font, color = style.text },
+  { name = "p", exp = "(.*)", font = style.font, color = style.text, padding = { x = 0, y = 10 } },
   { name = "strong", inline = true, font = fonts.bold, color = style.text, padding = { x = 0, y = 0 } },
   { name = "em", inline = true, font = fonts.italic, color = style.text, padding = { x = 0, y = 0 } },
   { name = "strike", inline = true, font = fonts.normal, color = style.dim, padding = { x = 0, y = 0 } }
@@ -56,7 +57,6 @@ local function find_markdown_type(name)
     if type.name == name then return type end
   end
 end
-
 
 local MarkdownView = View:extend()
 
@@ -116,11 +116,16 @@ local renderContext = {}
 
 ---@param line string[]
 ---@param styletype table
-local function renderLine(line, styletype)
+---@param sanitize_spaces boolean? force space between words to one
+local function renderLine(line, styletype, sanitize_spaces)
+  sanitize_spaces = sanitize_spaces or false
+
   local ctx = renderContext
 
   for i, text in ipairs(line) do
-    text = text .. (i ~= #line and " " or "")
+    if not sanitize_spaces then
+      text = text .. (i ~= #line and " " or "")
+    end
 
     local nextwidth = ctx.left + styletype.font:get_width(text)
     -- If the text being drawn has overflow, continue in the next line
@@ -140,13 +145,114 @@ local function renderLine(line, styletype)
   end
 end
 
+---@param content table
+---@return table wordlist
+local function calculate_content_size(content, styletype, context)
+  local lines = { {} }
+  local ctx = {
+    top = context.top,
+    left = context.left,
+  }
+
+  local i = 1
+  for _, item in ipairs(content) do
+    if type(item) == "string" then
+      if item == "\n" then
+        lines[#lines + 1] = {}
+        i = 1
+      else
+        for space, str in string.gmatch(item, "(%s*)([^%s]*)") do
+          print(string.format("space: '%s' | str: '%s'", space, str))
+          local spacewidth = styletype.font:get_width(space)
+          local strwidth = styletype.font:get_width(str)
+          local nextwidth = ctx.left + spacewidth + strwidth
+
+          -- If the text has overflow, continue in the next line
+          if i > 1 and nextwidth > renderContext.view.size.x then
+            lines[#lines + 1] = { str }
+            i = 1
+          end
+
+          if #space > 0 then
+            table.insert(lines[#lines], space)
+            ctx.left = ctx.left + spacewidth
+          end
+          table.insert(lines[#lines], str)
+          ctx.left = ctx.left + strwidth
+          i = i + 1
+
+        end
+      end
+    end
+  end
+  return lines
+end
+
+local specialRenders = {
+  ["pre-"] = function(tree)
+    local ctx = renderContext
+    local styletype = find_markdown_type("pre")
+
+    -- utils.print_table(tree)
+    -- print(string.rep("~", 20))
+    for _, subtree in ipairs(tree.content) do
+      if subtree.type == "code" then
+        local wordlist, n_lines = calculate_content_size(subtree.content, true)
+
+        ctx.top = ctx.top + styletype.margin.y
+        local bg_rect = {
+          x1 = ctx.view.bounds.left + styletype.margin.x,
+          y1 = ctx.view.bounds.top + ctx.top,
+          x2 = main.view.size.x - styletype.margin.x * 2,
+          y2 = n_lines * styletype.font:get_height() + styletype.padding.y
+        }
+        renderer.draw_rect(
+          bg_rect.x1, bg_rect.y1,
+          bg_rect.x2, bg_rect.y2,
+          style.background2
+        )
+
+        -- padding
+        ctx.top = ctx.top + styletype.padding.y
+        ctx.left = 0 + styletype.padding.x + styletype.margin.x
+
+        for _, text in ipairs(wordlist) do
+          if text == "\n" then
+            ctx.top = ctx.top + styletype.font:get_height()
+            ctx.left = 0 + styletype.padding.x + styletype.margin.x
+          else
+            -- TODO: use Doc.highlighter
+            common.draw_text(
+              styletype.font, styletype.color, text,
+              "left", ctx.left + ctx.view.bounds.left, ctx.top + ctx.view.bounds.top,
+              styletype.font:get_width(text),
+              styletype.font:get_height()
+            )
+            ctx.left = ctx.left + styletype.font:get_width(text)
+          end
+        end -- end for
+
+        -- bottom margin
+        ctx.top = ctx.top + styletype.margin.y
+      end -- end if
+    end --end for
+  end -- end function
+}
+
 local function renderTree(tree)
   local ctx = renderContext
 
   -- Subtree render logic
   if tree.type then
+    if not tree.content then return end -- Ignore not implemented types
+    local render = specialRenders[tree.type]
+    if render then
+      render(tree)
+      return
+    end
     local styletype = find_markdown_type(tree.type)
-    if not tree.content then return end
+    if not styletype then return find_markdown_type("p") end -- fallback to paragraph styletype
+
     for i, item in ipairs(tree.content) do
       if type(item) == "table" then
         -- render inline modifiers (like **bold**, *italic*, etc.) and other markdown types inserted in this subtree
@@ -170,6 +276,7 @@ local function renderTree(tree)
         log("Markdown-xl [renderTree]: Unknown type: " .. type(item) .. "skiping")
       end
     end
+
     local py = styletype.padding and styletype.padding.y or 0
     if not styletype.inline then
       ctx.top = ctx.top + styletype.font:get_height() + py
@@ -235,7 +342,7 @@ command.add(nil, {
       log("Markdown View already initialized")
     end
   end,
-  ["markdown:toggle debug"] = function ()
+  ["markdown:toggle debug"] = function()
     DEBUG = not DEBUG
     log("Markdown DEBUG " .. ((DEBUG and "enabled") or "disabled"))
   end
